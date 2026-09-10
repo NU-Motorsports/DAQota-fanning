@@ -1,1 +1,5 @@
+#change every day for file organization
+save_fp: "dev-outputs/9_10_2026"
 
+#change if you ever want to save files outside of the DAQota-fanning folder
+base_directory: "/home/pi/DAQota-fanning
