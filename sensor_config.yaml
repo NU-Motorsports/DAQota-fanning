@@ -34,7 +34,7 @@ sensors:
   # --- Shock Potentiometers (linear, voltage → inches) ----------------------
   # PLACEHOLDER channels: fill in AIN channel once wired
   - id: shock_pot_1
-    channel: AIN_SP1         # TODO: replace with real AIN channel
+    channel: AIN9        
     name: "Shock Pot 1"
     unit: "inches"
     type: linear
@@ -46,7 +46,7 @@ sensors:
       unit_max: 6.0
 
   - id: shock_pot_2
-    channel: AIN_SP2         # TODO: replace with real AIN channel
+    channel: AIN10        
     name: "Shock Pot 2"
     unit: "inches"
     type: linear
@@ -58,7 +58,7 @@ sensors:
       unit_max: 6.0
 
   - id: shock_pot_3
-    channel: AIN_SP3         # TODO: replace with real AIN channel
+    channel: AIN11        
     name: "Shock Pot 3"
     unit: "inches"
     type: linear
@@ -70,7 +70,7 @@ sensors:
       unit_max: 6.0
 
   - id: shock_pot_4
-    channel: AIN_SP4         # TODO: replace with real AIN channel
+    channel: AIN12         
     name: "Shock Pot 4"
     unit: "inches"
     type: linear
@@ -87,7 +87,7 @@ sensors:
     name: "Load Cell 1"
     unit: "lbf"
     type: linear
-    range_v: 10
+    range_v: 5
     cal:
       raw_min: 0.0           # TODO: calibrate
       raw_max: 10.0
@@ -102,7 +102,7 @@ sensors:
     range_v: 10
     cal:
       raw_min: 0.0           # TODO: calibrate
-      raw_max: 10.0
+      raw_max: 5.0
       unit_min: 0.0
       unit_max: 1000.0
 
@@ -168,7 +168,7 @@ sensors:
 
   # --- Tecat (PLACEHOLDER channel — update when wired) ----------------------
   - id: tecat
-    channel: AIN_TECAT       # TODO: replace with real AIN channel
+    channel: AIN13       
     name: "Tecat"
     unit: "V"
     type: raw                # TODO: change to linear + add cal once spec confirmed
