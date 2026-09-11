@@ -87,7 +87,7 @@ sensors:
     name: "Load Cell 1"
     unit: "lbf"
     type: linear
-    range_v: 5
+    range_v: 10
     cal:
       raw_min: 0.0           # TODO: calibrate
       raw_max: 10.0
@@ -102,7 +102,7 @@ sensors:
     range_v: 10
     cal:
       raw_min: 0.0           # TODO: calibrate
-      raw_max: 5.0
+      raw_max: 10.0
       unit_min: 0.0
       unit_max: 1000.0
 
