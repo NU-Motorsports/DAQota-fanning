@@ -52,7 +52,7 @@ def led_blinky() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 def labjack_test() -> None:
     # Channels to read — update to match your wired sensors
-    channels = ["AIN0", "AIN1", "AIN2", "AIN3", "AIN4"]
+    channels = ["AIN0", "AIN1", "AIN2", "AIN3", "AIN4", "AIN9", "AIN10", "AIN11", "AIN12", "AIN13"]
 
     while True:
         actively_running.wait()  # block until button pressed
