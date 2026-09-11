@@ -62,10 +62,7 @@ def labjack_test() -> None:
             print("Connecting to LabJack T7...")
             handle = ljm.openS("T7", "ANY", "ANY")
             info = ljm.getHandleInfo(handle)
-            print(
-                f"Connected: {ljm.numberToDeviceType(info[0])} "
-                f"S/N {info[2]} via {ljm.numberToConnectionType(info[1])}"
-            )
+            print(f"Connected to LabJack T7 — S/N {info[2]}")
 
             while actively_running.is_set():
                 voltages = ljm.eReadNames(handle, len(channels), channels)
