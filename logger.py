@@ -13,6 +13,7 @@ import csv
 import os
 import shutil
 import yaml
+from datetime import datetime
 from time import time, strftime
 
 from labjack import ljm
@@ -140,9 +141,8 @@ class Logger:
         for sensor in self.sensors:
             ch   = sensor["channel"]
             rng  = _RANGE_MAP.get(sensor.get("range_v", 10), 10.0)
-            # Range register: e.g. AIN0_RANGE
-            ljm.eWriteName(self.handle, f"{ch}_RANGE",      rng)
-            ljm.eWriteName(self.handle, f"{ch}_RESOLUTION_INDEX", 0)  # 0 = default
+            ljm.eWriteName(self.handle, f"{ch}_RANGE",           rng)
+            ljm.eWriteName(self.handle, f"{ch}_RESOLUTION_INDEX", 0)
 
     # ─────────────────────────────────────────────────────────────────────────
     # CONNECT / DISCONNECT
@@ -186,14 +186,14 @@ class Logger:
             print(f"WARNING: Could not copy config file: {e}")
 
     def _build_header(self) -> list:
-        """CSV column header: Time + one column per sensor (name + unit)."""
-        return ["Time (s)"] + [
+        """CSV column header: Timestamps + one column per sensor (name + unit)."""
+        return ["Time (s)", "Timestamp (Eastern)"] + [
             f"{s['name']} ({s['unit']})" for s in self.sensors
         ]
 
     def _build_raw_header(self) -> list:
-        """Raw CSV column header: Time + one voltage column per sensor."""
-        return ["Time (s)"] + [
+        """Raw CSV column header: Timestamps + one voltage column per sensor."""
+        return ["Time (s)", "Timestamp (Eastern)"] + [
             f"{s['name']} (V)" for s in self.sensors
         ]
 
@@ -235,7 +235,8 @@ class Logger:
                     # Read all channels in one round-trip
                     voltages = ljm.eReadNames(self.handle, self.channel_count, self.channels)
 
-                    elapsed = time() - start
+                    elapsed   = time() - start
+                    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]  # HH:MM:SS.mmm
 
                     # Convert voltages → engineering units
                     mapped_vals = [
@@ -244,14 +245,14 @@ class Logger:
                     ]
 
                     # Print to terminal
-                    print(f"t={elapsed:.3f}s", end="  ")
+                    print(f"t={elapsed:.3f}s  {timestamp}", end="  ")
                     for sensor, raw, mapped in zip(self.sensors, voltages, mapped_vals):
                         print(f"{sensor['name']}: {raw:.4f}V → {mapped:.4f} {sensor['unit']}", end="  ")
                     print()
 
                     # Write rows
-                    mapped_w.writerow([f"{elapsed:.6f}"] + [f"{v:.6f}" for v in mapped_vals])
-                    raw_w.writerow(   [f"{elapsed:.6f}"] + [f"{v:.6f}" for v in voltages])
+                    mapped_w.writerow([f"{elapsed:.6f}", timestamp] + [f"{v:.6f}" for v in mapped_vals])
+                    raw_w.writerow(   [f"{elapsed:.6f}", timestamp] + [f"{v:.6f}" for v in voltages])
                     mapped_f.flush()
                     raw_f.flush()
 

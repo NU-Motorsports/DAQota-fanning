@@ -1,14 +1,14 @@
 # =============================================================================
 # sensor_config.yaml
 # All sensor definitions, channel assignments, calibrations, and plot groups.
-# Adding a new linear sensor = add a new entry here- no logger changes needed
+# Adding a new linear sensor = add a new entry here. No code changes needed.
 # Nonlinear sensors (IMU, etc.) require a new method in logger.py.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # SAMPLE RATE
 # -----------------------------------------------------------------------------
-sample_rate_hz: 1000          # samples per channel per second
+sample_rate_hz: 1000
 
 # -----------------------------------------------------------------------------
 # SENSORS
@@ -17,137 +17,138 @@ sample_rate_hz: 1000          # samples per channel per second
 #   name      : human-readable label used in CSV header and plots
 #   unit      : engineering unit string (used in plot axis labels)
 #   type      : "linear" | "raw" | "custom"
-#                 linear  -> logger applies 2-point voltage map
-#                 raw     -> logger writes voltage as-is (no conversion)
-#                 custom  -> logger calls a matching method in logger.py
 #   cal:        only required for type: linear
 #     raw_min  : voltage at minimum engineering value
 #     raw_max  : voltage at maximum engineering value
 #     unit_min : minimum engineering value
 #     unit_max : maximum engineering value
-#   range_v   : LabJack input range in volts — 10 | 1 | 0.1 | 0.01
-#               (T7 supports ±10V, ±1V, ±0.1V, ±0.01V)
+#   range_v   : LabJack input range — 10 | 1 | 0.1 | 0.01
 # -----------------------------------------------------------------------------
 
 sensors:
 
-  # --- Shock Potentiometers (linear, voltage → inches) ----------------------
-  # PLACEHOLDER channels: fill in AIN channel once wired
+  # --- Shock Potentiometers (Gefran PZ34-A-0200-L, 200mm stroke) ------------
+  # Calibrated from measured minV (fully retracted) to maxV (fully extended)
+  # Suspension travel limited to 6 inches
+  # ID A → AIN5, ID B → AIN4, ID C → AIN3, ID D → AIN2
+
   - id: shock_pot_1
-    channel: AIN9        
-    name: "Shock Pot 1"
-    unit: "inches"
+    channel: AIN2
+    name: Shock Pot 1
+    unit: inches
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0
-      raw_max: 5.0
+      raw_min: 0.0013      # ID D — fully retracted
+      raw_max: 4.812       # ID D — fully extended
       unit_min: 0.0
-      unit_max: 6.0
+      unit_max: 7.555      # 7.87in - 8mm unusable
 
   - id: shock_pot_2
-    channel: AIN10        
-    name: "Shock Pot 2"
-    unit: "inches"
+    channel: AIN3
+    name: Shock Pot 2
+    unit: inches
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0
-      raw_max: 5.0
+      raw_min: 0.0013      # ID C
+      raw_max: 4.806
       unit_min: 0.0
-      unit_max: 6.0
+      unit_max: 7.87       # ID C — 0mm unusable, no adjustment
 
   - id: shock_pot_3
-    channel: AIN11        
-    name: "Shock Pot 3"
-    unit: "inches"
+    channel: AIN4
+    name: Shock Pot 3
+    unit: inches
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0
-      raw_max: 5.0
+      raw_min: 0.0013      # ID B
+      raw_max: 4.81
       unit_min: 0.0
-      unit_max: 6.0
+      unit_max: 7.7125     # 7.87in - 4mm unusable
 
   - id: shock_pot_4
-    channel: AIN12         
-    name: "Shock Pot 4"
-    unit: "inches"
+    channel: AIN5
+    name: Shock Pot 4
+    unit: inches
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0
-      raw_max: 5.0
+      raw_min: 0.0012      # ID A
+      raw_max: 4.801
       unit_min: 0.0
-      unit_max: 6.0
+      unit_max: 7.6338     # 7.87in - 6mm unusable
 
-  # --- Load Cells (linear, voltage → lbf or N — update unit_min/max to match your load cell spec) ---
+  # --- Load Cells (calibrated from measured points) -------------------------
+  # Signal is sub-30mV — use range_v: 0.1 for best resolution
+
   - id: load_cell_1
-    channel: AIN2
-    name: "Load Cell 1"
-    unit: "lbf"
+    channel: AIN12
+    name: Load Cell 1
+    unit: lbf
     type: linear
-    range_v: 10
+    range_v: 0.1
     cal:
-      raw_min: 0.0           # TODO: calibrate
-      raw_max: 5.0
+      raw_min: 0.0185      # LC A — 0 lbf
+      raw_max: 0.0252      # LC A — 335 lbf
       unit_min: 0.0
-      unit_max: 1000.0
+      unit_max: 335.0
 
   - id: load_cell_2
-    channel: AIN3
-    name: "Load Cell 2"
-    unit: "lbf"
+    channel: AIN13
+    name: Load Cell 2
+    unit: lbf
     type: linear
-    range_v: 10
+    range_v: 0.1
     cal:
-      raw_min: 0.0           # TODO: calibrate
-      raw_max: 5.0
+      raw_min: 0.0189      # LC B — 0 lbf
+      raw_max: 0.026       # LC B — 329 lbf
       unit_min: 0.0
-      unit_max: 1000.0
+      unit_max: 329.0
 
-  # --- Hall Effect Sensors (raw voltage — convert to RPM/speed in a future custom method if needed) ---
+  # --- Hall Effect Sensors ---------------------------------------------------
   - id: hall_effect_1
     channel: AIN6
-    name: "Hall Effect 1"
-    unit: "V"
+    name: Hall Effect 1
+    unit: V
     type: raw
     range_v: 10
 
   - id: hall_effect_2
     channel: AIN7
-    name: "Hall Effect 2"
-    unit: "V"
+    name: Hall Effect 2
+    unit: V
     type: raw
     range_v: 10
 
   - id: hall_effect_3
     channel: AIN8
-    name: "Hall Effect 3"
-    unit: "V"
+    name: Hall Effect 3
+    unit: V
     type: raw
     range_v: 10
 
-  # --- Torque Transducer (linear, voltage → Nm — update cal to match your transducer spec) ---
+  # --- Torque Transducer -----------------------------------------------------
   - id: torque_transducer
-    channel: AIN4
-    name: "Torque Transducer"
-    unit: "Nm"
+    channel: AIN10
+    name: Torque Transducer
+    unit: Nm
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0           # TODO: calibrate
+      raw_min: 0.0         # TODO: calibrate
       raw_max: 5.0
       unit_min: 0.0
       unit_max: 100.0
 
-  # --- Brake Pressure Sensors (linear, voltage → PSI) -----------------------
+  # --- Brake Pressure Sensors ------------------------------------------------
   - id: brake_pressure_1
     channel: AIN0
-    name: "Brake Pressure 1"
-    unit: "PSI"
+    name: Brake Pressure 1
+    unit: PSI
     type: linear
-    range_v: 1               # narrow range — sensor output is sub-2V
+    range_v: 1
     cal:
       raw_min: 0.26897
       raw_max: 1.37
@@ -156,8 +157,8 @@ sensors:
 
   - id: brake_pressure_2
     channel: AIN1
-    name: "Brake Pressure 2"
-    unit: "PSI"
+    name: Brake Pressure 2
+    unit: PSI
     type: linear
     range_v: 1
     cal:
@@ -166,42 +167,40 @@ sensors:
       unit_min: 0
       unit_max: 3000
 
-  # --- Tecat (PLACEHOLDER channel — update when wired) ----------------------
+  # --- Tecat -----------------------------------------------------------------
   - id: tecat
-    channel: AIN13       
-    name: "Tecat"
-    unit: "V"
-    type: raw                # TODO: change to linear + add cal once spec confirmed
+    channel: AIN9
+    name: Tecat
+    unit: V
+    type: raw
     range_v: 10
 
 # -----------------------------------------------------------------------------
 # PLOT GROUPS
-# plotter.py generates one figure per group automatically.
-# Each group lists sensor ids to include on that plot.
 # -----------------------------------------------------------------------------
 
 plot_groups:
 
-  - name: "Shock Potentiometers"
-    ylabel: "Travel (inches)"
+  - name: Shock Potentiometers
+    ylabel: Travel (inches)
     sensors: [shock_pot_1, shock_pot_2, shock_pot_3, shock_pot_4]
 
-  - name: "Brake Pressure"
-    ylabel: "Pressure (PSI)"
+  - name: Brake Pressure
+    ylabel: Pressure (PSI)
     sensors: [brake_pressure_1, brake_pressure_2]
 
-  - name: "Load Cells"
-    ylabel: "Force (lbf)"
+  - name: Load Cells
+    ylabel: Force (lbf)
     sensors: [load_cell_1, load_cell_2]
 
-  - name: "Hall Effect Sensors"
-    ylabel: "Voltage (V)"
+  - name: Hall Effect Sensors
+    ylabel: Voltage (V)
     sensors: [hall_effect_1, hall_effect_2, hall_effect_3]
 
-  - name: "Torque Transducer"
-    ylabel: "Torque (Nm)"
+  - name: Torque Transducer
+    ylabel: Torque (Nm)
     sensors: [torque_transducer]
 
-  - name: "Tecat"
-    ylabel: "Voltage (V)"
+  - name: Tecat
+    ylabel: Voltage (V)
     sensors: [tecat]
