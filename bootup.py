@@ -77,14 +77,20 @@ def led_blinky() -> None:
 # Quick check that the LabJack is reachable before starting the logger.
 # ─────────────────────────────────────────────────────────────────────────────
 def labjack_is_connected() -> bool:
+    handle = None
     try:
         from labjack import ljm
         handle = ljm.openS("T7", "ANY", "ANY")
-        ljm.close(handle)
         return True
     except Exception as e:
         print(f"LabJack not found: {e}")
         return False
+    finally:
+        if handle is not None:
+            try:
+                ljm.close(handle)
+            except Exception:
+                pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
