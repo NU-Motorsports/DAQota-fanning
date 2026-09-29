@@ -51,8 +51,15 @@ def led_blinky() -> None:
 # Opens connection and prints live voltages while active, disconnects when stopped
 # ─────────────────────────────────────────────────────────────────────────────
 def labjack_test() -> None:
-    # Channels to read — update to match your wired sensors
-    channels = ["AIN0", "AIN1", "AIN2", "AIN3", "AIN4", "AIN9", "AIN10", "AIN11", "AIN12", "AIN13"]
+        # Channels to read — matches sensor_config.yaml
+    channels = [
+        "AIN0", "AIN1",                  # Brake pressure 1, 2
+        "AIN2", "AIN3", "AIN4", "AIN5",  # Shock pots 1–4
+        "AIN6", "AIN7", "AIN8",          # Hall effect 1–3
+        "AIN9",                          # Tecat
+        "AIN10",                         # Torque transducer
+        "AIN12", "AIN13",                # Load cells 1, 2
+    ]
 
     while True:
         actively_running.wait()  # block until button pressed
@@ -63,6 +70,12 @@ def labjack_test() -> None:
             handle = ljm.openS("T7", "ANY", "ANY")
             info = ljm.getHandleInfo(handle)
             print(f"Connected to LabJack T7 — S/N {info[2]}")
+
+            ranges = {"AIN0": 1, "AIN1": 1, "AIN12": 0.1, "AIN13": 0.1}
+            for ch, r in ranges.items():
+                ljm.eWriteName(handle, f"{ch}_RANGE", r)
+
+            
 
             while actively_running.is_set():
                 voltages = ljm.eReadNames(handle, len(channels), channels)
