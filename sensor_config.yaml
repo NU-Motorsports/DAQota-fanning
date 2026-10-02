@@ -30,11 +30,11 @@ sensors:
   # --- Shock Potentiometers (Gefran PZ34-A-0200-L, 200mm stroke) ------------
   # Calibrated from measured minV (fully retracted) to maxV (fully extended)
   # Suspension travel limited to 6 inches
-  # ID A → AIN5, ID B → AIN4, ID C → AIN3, ID D → AIN2
+  # ID A → AIN4, ID B → AIN3, ID C → AIN2, ID D → AIN5
 
   - id: shock_pot_1
-    channel: AIN2
-    name: Shock Pot 1
+    channel: AIN5
+    name: Rear Right Shock Pot
     unit: inches
     type: linear
     range_v: 10
@@ -45,8 +45,8 @@ sensors:
       unit_max: 7.555      # 7.87in - 8mm unusable
 
   - id: shock_pot_2
-    channel: AIN3
-    name: Shock Pot 2
+    channel: AIN2
+    name: Rear Left Shock Pot
     unit: inches
     type: linear
     range_v: 10
@@ -57,8 +57,8 @@ sensors:
       unit_max: 7.87       # ID C — 0mm unusable, no adjustment
 
   - id: shock_pot_3
-    channel: AIN4
-    name: Shock Pot 3
+    channel: AIN3
+    name: Front Left Shock Pot
     unit: inches
     type: linear
     range_v: 10
@@ -69,8 +69,8 @@ sensors:
       unit_max: 7.7125     # 7.87in - 4mm unusable
 
   - id: shock_pot_4
-    channel: AIN5
-    name: Shock Pot 4
+    channel: AIN4
+    name: Front Right Shock Pot
     unit: inches
     type: linear
     range_v: 10
@@ -110,21 +110,21 @@ sensors:
   # --- Hall Effect Sensors ---------------------------------------------------
   - id: hall_effect_1
     channel: AIN6
-    name: Hall Effect 1
+    name: Front Left Axle Hall Effect
     unit: V
     type: raw
     range_v: 10
 
   - id: hall_effect_2
     channel: AIN7
-    name: Hall Effect 2
+    name: Front Right Axle Hall Effect
     unit: V
     type: raw
     range_v: 10
 
   - id: hall_effect_3
     channel: AIN8
-    name: Hall Effect 3
+    name: Rear Right Axle Hall Effect
     unit: V
     type: raw
     range_v: 10
