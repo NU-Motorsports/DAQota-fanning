@@ -82,7 +82,18 @@ def _convert_series(sensor: dict, series) -> tuple:
     else:  # raw — no conversion
         return series, sensor["unit"]
 
+def save_converted_csv(df: pd.DataFrame, sensor_cfg: dict, csv_path: str) -> None:
+    """Save a converted engineering units CSV alongside the raw one."""
+    # Build output columns: Time, Timestamp, then eng unit columns
+    cols = ["Time (s)", "Timestamp (Eastern)"]
+    for sensor in sensor_cfg["sensors"]:
+        eng_col = f"{sensor['name']} ({sensor['unit']})"
+        if eng_col in df.columns:
+            cols.append(eng_col)
 
+    out_path = csv_path.replace("_RAW.csv", "_MAPPED.csv")
+    df[cols].to_csv(out_path, index=False)
+    print(f"  Converted CSV saved: {out_path}")
 # ─────────────────────────────────────────────────────────────────────────────
 # PLOTTER
 # ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +125,8 @@ def generate_plots(csv_path: str, sensor_cfg: dict) -> None:
         eng_col = f"{sensor['name']} ({unit})"
         df[eng_col] = converted
 
+    # Save converted CSV
+    save_converted_csv(df, sensor_cfg, csv_path)
     base_path   = os.path.splitext(csv_path)[0]
     plot_groups = sensor_cfg.get("plot_groups", [])
 
