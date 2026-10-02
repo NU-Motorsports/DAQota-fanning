@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
 logger.py
-LabJack T7 DAQ logger — stream mode, config-driven via sensor_config.yaml.
+LabJack T7 DAQ logger — stream mode, raw voltage only.
 
-Stream mode delivers true hardware-timed samples at up to 100kHz total.
-For 13 channels, max per-channel rate = ~7,692 Hz (100kHz / 13).
-Default is set to 5,000 Hz per channel (65,000 rows/sec) with a write
-buffer to avoid hammering the SD card.
+Logs raw voltages as fast as possible. Engineering unit conversion
+happens in plotter.py after the run to keep this loop lean.
 
 Adding a new LINEAR sensor:  add an entry to sensor_config.yaml only.
 Adding a NONLINEAR sensor:   add an entry with type: "custom", then add a
-                              matching method to the CUSTOM CONVERSIONS section
-                              and register it in _build_custom_map().
+                              matching method to plotter.py.
 """
 
 import csv
@@ -34,10 +31,10 @@ FILE_CONFIG_PATH   = os.path.join(_HERE, "config", "file.yaml")
 # ─────────────────────────────────────────────────────────────────────────────
 # STREAM SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
-STREAM_SAMPLE_RATE_HZ = 1000   # per channel — 13ch × 1000 = 13,000 scans/sec
-SCANS_PER_READ        = 500   # how many scans to pull per ljm.eStreamRead call
-WRITE_BUFFER_SIZE     = 5000   # flush to CSV after this many rows accumulate
-PRINT_EVERY_N_SCANS   = 5000   # print to terminal every N scans (reduce spam)
+STREAM_SAMPLE_RATE_HZ = 500    # per channel
+SCANS_PER_READ        = 250    # scans per eStreamRead call
+WRITE_BUFFER_SIZE     = 2000   # flush to CSV after this many rows
+PRINT_EVERY_N_SCANS   = 2000   # print status every N scans
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RANGE CONSTANTS
@@ -51,21 +48,6 @@ _RANGE_MAP = {
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# CUSTOM CONVERSIONS
-# ═════════════════════════════════════════════════════════════════════════════
-
-def _convert_tecat(voltage: float) -> float:
-    """Placeholder custom conversion for Tecat sensor."""
-    return voltage
-
-
-def _build_custom_map() -> dict:
-    return {
-        "tecat": _convert_tecat,
-    }
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 # LOGGER CLASS
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -75,7 +57,6 @@ class Logger:
         self.sensor_cfg    = self._load_yaml(SENSOR_CONFIG_PATH)
         self.file_cfg      = self._load_yaml(FILE_CONFIG_PATH)
         self.sensors       = self.sensor_cfg["sensors"]
-        self.custom_map    = _build_custom_map()
 
         self.channels      = [s["channel"] for s in self.sensors]
         self.channel_count = len(self.channels)
@@ -89,9 +70,8 @@ class Logger:
         os.makedirs(self.file_dir, exist_ok=True)
 
         timestr = strftime("%m-%d-%Y_%H-%M-%S")
-        self.run_name    = f"{timestr}_LJ_DAQ_DATA"
-        self.path_mapped = os.path.join(self.file_dir, f"{self.run_name}_MAPPED.csv")
-        self.path_raw    = os.path.join(self.file_dir, f"{self.run_name}_RAW.csv")
+        self.run_name     = f"{timestr}_LJ_DAQ_DATA"
+        self.path_raw     = os.path.join(self.file_dir, f"{self.run_name}_RAW.csv")
         self.control_file = os.path.join(base_dir, "latest_csv_path.txt")
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -103,48 +83,16 @@ class Logger:
         with open(path, "r") as f:
             return yaml.safe_load(f)
 
-    @staticmethod
-    def _linear_map(voltage, raw_min, raw_max, unit_min, unit_max) -> float:
-        voltage  = float(voltage)
-        raw_min  = float(raw_min)
-        raw_max  = float(raw_max)
-        unit_min = float(unit_min)
-        unit_max = float(unit_max)
-        if raw_max == raw_min:
-            return unit_min
-        return ((voltage - raw_min) / (raw_max - raw_min)) * (unit_max - unit_min) + unit_min
-
-    def _convert(self, sensor: dict, voltage: float) -> float:
-        sensor_type = sensor.get("type", "raw")
-        if sensor_type == "linear":
-            c = sensor["cal"]
-            return self._linear_map(
-                voltage,
-                c["raw_min"], c["raw_max"],
-                c["unit_min"], c["unit_max"]
-            )
-        elif sensor_type == "custom":
-            fn = self.custom_map.get(sensor["id"])
-            if fn is None:
-                raise ValueError(f"No custom function for sensor '{sensor['id']}'")
-            return fn(voltage)
-        else:
-            return voltage
-
     def _configure_ain(self):
-        """Set AIN range for each channel."""
+        """Set AIN range for each channel — must be called BEFORE stream start."""
         for sensor in self.sensors:
             ch  = sensor["channel"]
             rng = _RANGE_MAP.get(sensor.get("range_v", 10), 10.0)
             ljm.eWriteName(self.handle, f"{ch}_RANGE",            rng)
             ljm.eWriteName(self.handle, f"{ch}_RESOLUTION_INDEX", 0)
 
-    def _build_header(self) -> list:
-        return ["Time (s)", "Timestamp (Eastern)"] + [
-            f"{s['name']} ({s['unit']})" for s in self.sensors
-        ]
-
     def _build_raw_header(self) -> list:
+        """Time + Eastern timestamp + raw voltage column per sensor."""
         return ["Time (s)", "Timestamp (Eastern)"] + [
             f"{s['name']} (V)" for s in self.sensors
         ]
@@ -180,7 +128,7 @@ class Logger:
     def _write_control_file(self):
         try:
             with open(self.control_file, "w") as f:
-                f.write(self.path_mapped)
+                f.write(self.path_raw)
         except Exception as e:
             print(f"WARNING: Could not write control file: {e}")
 
@@ -199,96 +147,86 @@ class Logger:
         self._write_control_file()
         self._save_config_copy()
 
-        print(f"\nLogging to:\n  {self.path_mapped}\n  {self.path_raw}")
+        print(f"\nLogging to:\n  {self.path_raw}")
         print(f"Channels:    {self.channels}")
         print(f"Sample rate: {STREAM_SAMPLE_RATE_HZ} Hz per channel")
         print(f"Total rate:  {STREAM_SAMPLE_RATE_HZ * self.channel_count:,} scans/sec\n")
+
+        # Resolve channel addresses once up front
+        ch_addresses = [ljm.nameToAddress(ch)[0] for ch in self.channels]
 
         # Start stream
         actual_rate = ljm.eStreamStart(
             self.handle,
             SCANS_PER_READ,
             self.channel_count,
-            [ljm.nameToAddress(ch)[0] for ch in self.channels],
+            ch_addresses,
             STREAM_SAMPLE_RATE_HZ
         )
-        print(f"Stream started at {actual_rate:.1f} Hz per channel")
+        print(f"Stream started at {actual_rate:.1f} Hz per channel\n")
 
-        start      = time()
-        scan_count = 0
-        mapped_buf = deque()
-        raw_buf    = deque()
+        start         = time()
+        scan_count    = 0
+        overlap_count = 0
+        raw_buf       = deque()
 
-        with (
-            open(self.path_mapped, "w", newline="") as mapped_f,
-            open(self.path_raw,    "w", newline="") as raw_f,
-        ):
-            mapped_w = csv.writer(mapped_f)
-            raw_w    = csv.writer(raw_f)
-            mapped_w.writerow(self._build_header())
+        with open(self.path_raw, "w", newline="") as raw_f:
+            raw_w = csv.writer(raw_f)
             raw_w.writerow(self._build_raw_header())
 
             try:
                 while True:
-                    # Read a chunk of scans from the stream buffer
-                    ret = ljm.eStreamRead(self.handle)
-                    data        = ret[0]   # flat list: [ch0_s0, ch1_s0, ..., ch0_s1, ch1_s1, ...]
-                    num_scans   = len(data) // self.channel_count
-                    elapsed     = time() - start
-                    timestamp   = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    # ── HOT LOOP: read and buffer only ────────────────────
+                    try:
+                        ret = ljm.eStreamRead(self.handle)
+                    except ljm.LJMError as e:
+                        if e.errorCode == 2942:  # STREAM_SCAN_OVERLAP
+                            overlap_count += 1
+                            print(f"WARNING: Stream overlap #{overlap_count}")
+                            continue
+                        raise
 
-                    # Split flat data into per-scan rows
+                    data      = ret[0]
+                    num_scans = len(data) // self.channel_count
+                    elapsed   = time() - start
+                    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
                     for i in range(num_scans):
-                        scan_start = i * self.channel_count
-                        voltages   = data[scan_start: scan_start + self.channel_count]
-
-                        # Time for this specific scan (interpolate within the chunk)
+                        s         = i * self.channel_count
                         scan_time = elapsed - (num_scans - i - 1) / actual_rate
-
-                        mapped_vals = [
-                            self._convert(sensor, v)
-                            for sensor, v in zip(self.sensors, voltages)
-                        ]
-
-                        mapped_buf.append(
-                            [f"{scan_time:.6f}", timestamp] + [f"{v:.6f}" for v in mapped_vals]
-                        )
+                        voltages  = data[s: s + self.channel_count]
                         raw_buf.append(
-                            [f"{scan_time:.6f}", timestamp] + [f"{v:.6f}" for v in voltages]
+                            [f"{scan_time:.6f}", timestamp] +
+                            [f"{v:.6f}" for v in voltages]
                         )
 
                     scan_count += num_scans
 
-                    # Flush buffer to disk
-                    if len(mapped_buf) >= WRITE_BUFFER_SIZE:
-                        mapped_w.writerows(mapped_buf)
+                    # ── FLUSH to disk when buffer is full ─────────────────
+                    if len(raw_buf) >= WRITE_BUFFER_SIZE:
                         raw_w.writerows(raw_buf)
-                        mapped_f.flush()
                         raw_f.flush()
-                        mapped_buf.clear()
                         raw_buf.clear()
 
-                    # Print status periodically
+                    # ── STATUS PRINT ──────────────────────────────────────
                     if scan_count % PRINT_EVERY_N_SCANS < num_scans:
-                        latest = [self._convert(s, v) for s, v in zip(self.sensors, voltages)]
-                        print(f"t={elapsed:.2f}s  {timestamp}  scans={scan_count:,}", end="  ")
-                        for sensor, val in zip(self.sensors, latest):
-                            print(f"{sensor['name']}: {val:.3f} {sensor['unit']}", end="  ")
-                        print()
+                        print(
+                            f"t={elapsed:.1f}s  {timestamp}  "
+                            f"scans={scan_count:,}  overlaps={overlap_count}"
+                        )
 
             except KeyboardInterrupt:
                 print("\nLogging stopped.")
 
             finally:
                 # Flush remaining buffer
-                if mapped_buf:
-                    mapped_w.writerows(mapped_buf)
+                if raw_buf:
                     raw_w.writerows(raw_buf)
-                    mapped_f.flush()
                     raw_f.flush()
+                    raw_buf.clear()
 
-        print(f"\nTotal scans: {scan_count:,}")
-        print(f"Data saved:\n  {self.path_mapped}\n  {self.path_raw}")
+        print(f"\nTotal scans: {scan_count:,}  Overlaps: {overlap_count}")
+        print(f"Raw data saved: {self.path_raw}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

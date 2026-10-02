@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
 plotter.py
-Generates one final plot per plot_group defined in sensor_config.yaml.
-Called automatically by bootup.py after logging stops.
+Reads raw voltage CSV from logger.py, converts to engineering units
+using sensor_config.yaml, and generates one PNG per plot_group.
 
-Plot groups are fully config-driven — no code changes needed when sensors
-or groupings change, as long as sensor_config.yaml is updated.
+All conversion happens here so logger.py stays as fast as possible.
 """
 
 import os
@@ -16,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import yaml
 
-matplotlib.use("Agg")  # non-interactive backend — save files only, no display
+matplotlib.use("Agg")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG PATHS
@@ -36,7 +35,6 @@ def _load_yaml(path: str) -> dict:
 
 
 def _get_latest_csv_path(base_dir: str) -> str:
-    """Read the control file written by logger.py to find the last CSV."""
     control_file = os.path.join(base_dir, "latest_csv_path.txt")
     try:
         with open(control_file, "r") as f:
@@ -49,9 +47,40 @@ def _get_latest_csv_path(base_dir: str) -> str:
         sys.exit(1)
 
 
-def _sensor_col(sensor: dict) -> str:
-    """Return the CSV column name for a sensor (must match logger.py header)."""
-    return f"{sensor['name']} ({sensor['unit']})"
+def _linear_map(series, raw_min, raw_max, unit_min, unit_max):
+    """Vectorized 2-point linear map on a pandas Series."""
+    raw_min  = float(raw_min)
+    raw_max  = float(raw_max)
+    unit_min = float(unit_min)
+    unit_max = float(unit_max)
+    if raw_max == raw_min:
+        return series * 0 + unit_min
+    return ((series - raw_min) / (raw_max - raw_min)) * (unit_max - unit_min) + unit_min
+
+
+def _convert_series(sensor: dict, series) -> tuple:
+    """
+    Convert a raw voltage Series to engineering units.
+    Returns (converted_series, unit_label).
+    """
+    sensor_type = sensor.get("type", "raw")
+
+    if sensor_type == "linear":
+        c = sensor["cal"]
+        converted = _linear_map(
+            series,
+            c["raw_min"], c["raw_max"],
+            c["unit_min"], c["unit_max"]
+        )
+        return converted, sensor["unit"]
+
+    elif sensor_type == "custom":
+        # Add custom conversions here as needed
+        # e.g. if sensor["id"] == "tecat": ...
+        return series, sensor["unit"]
+
+    else:  # raw — no conversion
+        return series, sensor["unit"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -59,10 +88,6 @@ def _sensor_col(sensor: dict) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_plots(csv_path: str, sensor_cfg: dict) -> None:
-    """
-    Generate one PNG per plot_group defined in sensor_config.yaml.
-    Output PNGs are saved next to the CSV.
-    """
     print(f"Reading CSV: {csv_path}")
 
     try:
@@ -74,46 +99,56 @@ def generate_plots(csv_path: str, sensor_cfg: dict) -> None:
         print(f"ERROR reading CSV: {e}")
         return
 
-    # Build a lookup: sensor id → sensor definition dict
+    # Build sensor lookup
     sensor_lookup = {s["id"]: s for s in sensor_cfg["sensors"]}
 
-    # Base path for output images (strip .csv extension)
-    base_path = os.path.splitext(csv_path)[0]
+    # Convert all raw voltage columns to engineering units
+    # Raw column name: "{name} (V)"
+    # Converted column name: "{name} ({unit})"
+    for sensor in sensor_cfg["sensors"]:
+        raw_col = f"{sensor['name']} (V)"
+        if raw_col not in df.columns:
+            print(f"  WARNING: column '{raw_col}' not in CSV — skipping {sensor['name']}")
+            continue
+        converted, unit = _convert_series(sensor, df[raw_col])
+        eng_col = f"{sensor['name']} ({unit})"
+        df[eng_col] = converted
 
+    base_path   = os.path.splitext(csv_path)[0]
     plot_groups = sensor_cfg.get("plot_groups", [])
+
     if not plot_groups:
-        print("No plot_groups defined in sensor_config.yaml — nothing to plot.")
+        print("No plot_groups defined — nothing to plot.")
         return
 
     for group in plot_groups:
-        group_name   = group["name"]
-        ylabel       = group.get("ylabel", "Value")
-        sensor_ids   = group.get("sensors", [])
+        group_name = group["name"]
+        ylabel     = group.get("ylabel", "Value")
+        sensor_ids = group.get("sensors", [])
 
         if not sensor_ids:
             print(f"  Skipping '{group_name}': no sensors listed.")
             continue
 
         fig, ax = plt.subplots(figsize=(12, 5))
-
         plotted_any = False
+
         for sid in sensor_ids:
             sensor = sensor_lookup.get(sid)
             if sensor is None:
-                print(f"  WARNING: sensor id '{sid}' in plot group '{group_name}' "
-                      f"not found in sensor config — skipping.")
+                print(f"  WARNING: sensor id '{sid}' not found in config — skipping.")
                 continue
 
-            col = _sensor_col(sensor)
-            if col not in df.columns:
-                print(f"  WARNING: column '{col}' not found in CSV — skipping.")
+            eng_col = f"{sensor['name']} ({sensor['unit']})"
+            if eng_col not in df.columns:
+                print(f"  WARNING: column '{eng_col}' not in DataFrame — skipping.")
                 continue
 
-            ax.plot(df["Time (s)"], df[col], label=sensor["name"])
+            ax.plot(df["Time (s)"], df[eng_col], label=sensor["name"])
             plotted_any = True
 
         if not plotted_any:
-            print(f"  No data to plot for group '{group_name}' — skipping.")
+            print(f"  No data for group '{group_name}' — skipping.")
             plt.close(fig)
             continue
 
@@ -124,7 +159,6 @@ def generate_plots(csv_path: str, sensor_cfg: dict) -> None:
         ax.grid(True, linestyle="--", alpha=0.5)
         fig.tight_layout()
 
-        # Sanitize group name for filename
         safe_name = group_name.upper().replace(" ", "_").replace("/", "_")
         out_path  = f"{base_path}_{safe_name}.png"
         fig.savefig(out_path, dpi=150)
@@ -141,8 +175,6 @@ def generate_plots(csv_path: str, sensor_cfg: dict) -> None:
 if __name__ == "__main__":
     sensor_cfg = _load_yaml(SENSOR_CONFIG_PATH)
     file_cfg   = _load_yaml(FILE_CONFIG_PATH)
-
     base_dir   = file_cfg["base_dir"]
     csv_path   = _get_latest_csv_path(base_dir)
-
     generate_plots(csv_path, sensor_cfg)
