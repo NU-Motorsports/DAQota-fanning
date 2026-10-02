@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# DAQ local config
+file.yaml
+dev-outputs/
+bootup_log.txt
+latest_csv_path.txt
