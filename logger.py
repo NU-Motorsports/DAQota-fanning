@@ -31,11 +31,10 @@ FILE_CONFIG_PATH   = os.path.join(_HERE, "config", "file.yaml")
 # ─────────────────────────────────────────────────────────────────────────────
 # STREAM SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
-STREAM_SAMPLE_RATE_HZ = 500    # per channel
-SCANS_PER_READ        = 250    # scans per eStreamRead call
-WRITE_BUFFER_SIZE     = 2000   # flush to CSV after this many rows
-PRINT_EVERY_N_SCANS   = 2000   # print status every N scans
-
+STREAM_SAMPLE_RATE_HZ = 100
+SCANS_PER_READ        = 50
+WRITE_BUFFER_SIZE     = 500
+PRINT_EVERY_N_SCANS   = 500
 # ─────────────────────────────────────────────────────────────────────────────
 # RANGE CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
