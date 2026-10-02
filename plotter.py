@@ -22,8 +22,8 @@ matplotlib.use("Agg")  # non-interactive backend — save files only, no display
 # CONFIG PATHS
 # ─────────────────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
-SENSOR_CONFIG_PATH = os.path.join(_HERE, "config", "sensor_config.yaml")
-FILE_CONFIG_PATH   = os.path.join(_HERE, "config", "file.yaml")
+SENSOR_CONFIG_PATH = os.path.join(_HERE, "sensor_config.yaml")
+FILE_CONFIG_PATH   = os.path.join(_HERE, "file.yaml")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
