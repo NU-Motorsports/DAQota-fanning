@@ -31,10 +31,10 @@ FILE_CONFIG_PATH   = os.path.join(_HERE, "file.yaml")
 # ─────────────────────────────────────────────────────────────────────────────
 # STREAM SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
-STREAM_SAMPLE_RATE_HZ = 100
-SCANS_PER_READ        = 50
-WRITE_BUFFER_SIZE     = 500
-PRINT_EVERY_N_SCANS   = 500
+STREAM_SAMPLE_RATE_HZ = 50
+SCANS_PER_READ        = 25
+WRITE_BUFFER_SIZE     = 250
+PRINT_EVERY_N_SCANS   = 250
 # ─────────────────────────────────────────────────────────────────────────────
 # RANGE CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
