@@ -49,9 +49,10 @@ error_state      = threading.Event()   # set = LabJack not found, blink fast
 print("DAQ bootup starting...")
 
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LED THREAD
-#   Error state  → fast blink (0.1s on / 0.1s off)
+#   Error state  → solid on
 #   Logging      → slow blink (0.8s on / 0.5s off)
 #   Idle         → off
 # ─────────────────────────────────────────────────────────────────────────────
@@ -59,9 +60,7 @@ def led_blinky() -> None:
     while True:
         if error_state.is_set():
             GPIO.output(LED_PIN, GPIO.HIGH)
-            time.sleep(0.1)
-            GPIO.output(LED_PIN, GPIO.LOW)
-            time.sleep(0.1)
+            time.sleep(0.05)
         elif actively_logging.is_set():
             GPIO.output(LED_PIN, GPIO.HIGH)
             time.sleep(0.8)
