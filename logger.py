@@ -34,8 +34,8 @@ FILE_CONFIG_PATH   = os.path.join(_HERE, "config", "file.yaml")
 # ─────────────────────────────────────────────────────────────────────────────
 # STREAM SETTINGS
 # ─────────────────────────────────────────────────────────────────────────────
-STREAM_SAMPLE_RATE_HZ = 5000   # per channel — 13ch × 5000 = 65,000 scans/sec
-SCANS_PER_READ        = 1000   # how many scans to pull per ljm.eStreamRead call
+STREAM_SAMPLE_RATE_HZ = 1000   # per channel — 13ch × 1000 = 13,000 scans/sec
+SCANS_PER_READ        = 500   # how many scans to pull per ljm.eStreamRead call
 WRITE_BUFFER_SIZE     = 5000   # flush to CSV after this many rows accumulate
 PRINT_EVERY_N_SCANS   = 5000   # print to terminal every N scans (reduce spam)
 
