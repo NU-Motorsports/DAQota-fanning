@@ -209,10 +209,17 @@ class Logger:
 
                     # ── STATUS PRINT ──────────────────────────────────────
                     if scan_count % PRINT_EVERY_N_SCANS < num_scans:
-                        print(
-                            f"t={elapsed:.1f}s  {timestamp}  "
-                            f"scans={scan_count:,}  overlaps={overlap_count}"
+                        latest_voltages = data[-self.channel_count:]
+                        readings = "  ".join(
+                            f"{s['name']}: {v:.4f} V"
+                            for s, v in zip(self.sensors, latest_voltages)
                         )
+                        print(
+                            f"t={elapsed:.1f}s {timestamp}"
+                            f"scans={scan_count:,}  overlaps={overlap_count}\n"
+                            f"  {readings}"
+                        )
+
 
             except KeyboardInterrupt:
                 print("\nLogging stopped.")
