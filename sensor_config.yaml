@@ -133,14 +133,14 @@ sensors:
   - id: torque_transducer
     channel: AIN10
     name: Torque Transducer
-    unit: Nm
+    unit: lbf
     type: linear
     range_v: 10
     cal:
-      raw_min: 0.0         # TODO: calibrate
-      raw_max: 5.0
+      raw_min: 1.1933        
+      raw_max: 1.71
       unit_min: 0.0
-      unit_max: 100.0
+      unit_max: 30.0
 
   # --- Brake Pressure Sensors ------------------------------------------------
   - id: brake_pressure_1
